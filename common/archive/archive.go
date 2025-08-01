@@ -38,6 +38,8 @@ type Header struct {
 	FormatVersion         string `bson:"version"`
 	ServerVersion         string `bson:"server_version"`
 	ToolVersion           string `bson:"tool_version"`
+	OplogT                uint32 `bson:"oplog_t"`
+	OplogI                uint32 `bson:"oplog_i"`
 }
 
 const minBSONSize = 4 + 1 // an empty BSON document should be exactly five bytes long

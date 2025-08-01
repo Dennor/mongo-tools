@@ -384,11 +384,16 @@ func (dump *MongoDump) Dump() (err error) {
 	}
 
 	if dump.OutputOptions.Archive != "" {
+		dump.oplogStart, err = dump.getOplogCopyStartTime()
+		if err != nil {
+			return fmt.Errorf("error getting oplog start: %v", err)
+		}
 		dump.archive.Prelude, err = archive.NewPrelude(
 			dump.manager,
 			dump.OutputOptions.NumParallelCollections,
 			dump.serverVersion,
 			dump.ToolOptions.VersionStr,
+			dump.oplogStart,
 		)
 		if err != nil {
 			return fmt.Errorf("creating archive prelude: %v", err)

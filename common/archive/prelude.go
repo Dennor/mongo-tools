@@ -17,6 +17,7 @@ import (
 	"github.com/mongodb/mongo-tools/common/log"
 	"github.com/mongodb/mongo-tools/common/util"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // MetadataFile implements intents.file.
@@ -94,6 +95,7 @@ func NewPrelude(
 	manager *intents.Manager,
 	concurrentColls int,
 	serverVersion, toolVersion string,
+	t primitive.Timestamp,
 ) (*Prelude, error) {
 	prelude := Prelude{
 		Header: &Header{
@@ -101,6 +103,8 @@ func NewPrelude(
 			ServerVersion:         serverVersion,
 			ToolVersion:           toolVersion,
 			ConcurrentCollections: int32(concurrentColls),
+			OplogT:                t.T,
+			OplogI:                t.I,
 		},
 		NamespaceMetadatasByDB: make(map[string][]*CollectionMetadata, 0),
 	}
