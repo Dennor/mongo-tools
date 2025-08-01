@@ -34,6 +34,10 @@ type oplogContext struct {
 	txnBuffer  *txn.Buffer
 }
 
+func (o oplogContext) Stop() {
+	o.txnBuffer.Stop()
+}
+
 var knownCommands = map[string]bool{
 	"renameCollection": true,
 	"dropDatabase":     true,
@@ -70,6 +74,20 @@ func shouldIgnoreNamespace(ns string) bool {
 }
 
 // RestoreOplog attempts to restore a MongoDB oplog.
+func (restore *MongoRestore) OplogContext() (*oplogContext, error) {
+	session, err := restore.SessionProvider.GetSession()
+	if err != nil {
+		return nil, fmt.Errorf("error establishing connection: %v", err)
+	}
+
+	oplogCtx := &oplogContext{
+		txnBuffer:  txn.NewBuffer(),
+		session:    session,
+	}
+	return oplogCtx, nil
+}
+
+// RestoreOplog attempts to restore a MongoDB oplog.
 func (restore *MongoRestore) RestoreOplog() error {
 	log.Logv(log.Always, "replaying oplog")
 	intent := restore.manager.Oplog()
@@ -96,16 +114,11 @@ func (restore *MongoRestore) RestoreOplog() error {
 	decodedBsonSource := db.NewDecodedBSONSource(bsonSource)
 	defer decodedBsonSource.Close()
 
-	session, err := restore.SessionProvider.GetSession()
+	oplogCtx, err := restore.OplogContext()
 	if err != nil {
-		return fmt.Errorf("error establishing connection: %v", err)
+		return err
 	}
-
-	oplogCtx := &oplogContext{
-		progressor: progress.NewCounter(intent.BSONSize),
-		txnBuffer:  txn.NewBuffer(),
-		session:    session,
-	}
+	oplogCtx.progressor = progress.NewCounter(intent.BSONSize)
 	defer oplogCtx.txnBuffer.Stop()
 
 	if restore.ProgressManager != nil {
@@ -118,7 +131,9 @@ func (restore *MongoRestore) RestoreOplog() error {
 		if rawOplogEntry == nil {
 			break
 		}
-		oplogCtx.progressor.Inc(int64(len(rawOplogEntry)))
+		if oplogCtx.progressor != nil {
+			oplogCtx.progressor.Inc(int64(len(rawOplogEntry)))
+		}
 
 		entryAsOplog := db.Oplog{}
 
